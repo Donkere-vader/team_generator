@@ -61,11 +61,11 @@ fn get_highest_teams() -> usize {
     // the most ugly rust function you will ever see. This is to get the file length of output.txt
 
     let mut file = match File::open("output.txt") {
-        Err(why) => panic!("couldn't open output.txt"),
+        Err(_why) => panic!("couldn't open output.txt"),
         Ok(file) => file,
     };
     let mut contents = String::new();
-    file.read_to_string(&mut contents);
+    file.read_to_string(&mut contents).expect("Failed to read file");
     let mut vec: Vec<&str> = contents.split("\n").collect();
     let index = vec.iter().position(|x| *x == "").unwrap();
     vec.remove(index);
@@ -83,9 +83,12 @@ fn main() {
         }
 
         let mut done_players: Vec::<usize> = Vec::new();
-
+        let mut not_c = 0;
         let mut c = true; // continue
-        while c {
+        while c && not_c < 100 {
+            if !c {
+                not_c += 1;
+            }
             c = false;
 
             let mut sorted_ys: Vec<usize> = Vec::new();
@@ -113,15 +116,14 @@ fn main() {
             shuffled_ys.shuffle(&mut rng);
 
             for player in shuffled_ys.iter() {
-                if done_players.contains(&player) {
-                    continue
-                }
+                // if done_players.contains(&player) {
+                //     continue
+                // }
 
                 let mut changes = false;
                 let mut duos_in_new_team: Vec<[usize; 2]> = Vec::new();
                 if matrix[*player].iter().filter(|&&x| x == 0 as usize).count() >= 3 {
                     let mut all_zeros = Vec::<usize>::new();
-                    let mut b: bool = false;
                     
                     let mut rng = thread_rng();
                     let mut shuffled_ys2 = [0; AMOUNT_OF_PLAYERS];
@@ -136,28 +138,23 @@ fn main() {
                         if cell == 0 {
                             all_zeros.push(*x);
                         }
+                    }
 
-                        let mut team: Vec<usize> = vec![*player];
-                        for zero in all_zeros.iter().rev() {
-                            let mut new_team: Vec<usize> = (*team).to_vec();
-                            new_team.push(*zero);
+                    let mut team: Vec<usize> = vec![*player];
+                    for zero in all_zeros.iter() {
+                        let mut new_team: Vec<usize> = (*team).to_vec();
+                        new_team.push(*zero);
 
-                            if validate_team(&matrix, &new_team) {
-                                if new_team.len() == 4 {
-                                    duos_in_new_team = all_duos(&new_team);
-                                    teams.push((*new_team).to_vec());
-                                    changes = true;
-                                    b = true;
-                                    break;
-                                }
-                                else {
-                                    team = (*new_team).to_vec();
-                                }
+                        if new_team.len() == 2 || validate_team(&matrix, &new_team) {
+                            if new_team.len() == 4 {
+                                duos_in_new_team = all_duos(&new_team);
+                                teams.push((*new_team).to_vec());
+                                changes = true;
+                                break;
                             }
-                        }
-
-                        if b {
-                            break;
+                            else {
+                                team = (*new_team).to_vec();
+                            }
                         }
                     }
                 }
@@ -188,6 +185,8 @@ fn main() {
         } else if highest_teams - teams.len() < 4 {
             color = "\u{001b}[5;30;50;43m"; // if difference is less than two than make it orange
         }
+        // clear_console();
+        // print_matrix(&matrix);
         println!("Found {} {} \u{001b}[0;0;0m combinations", color, teams.len());
     }
 }
