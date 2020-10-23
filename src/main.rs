@@ -141,9 +141,9 @@ fn main() {
         }
     }
 
-    // for t in teams.iter() {
-    //     println!("{} {} {} {}", t[0], t[1], t[2], t[3]);
-    // }
+    for t in teams.iter() {
+        println!("{} {} {} {}", t[0], t[1], t[2], t[3]);
+    }
 
     println!("Found \u{001b}[5;30;50;42m {:?} \u{001b}[0;0;0m combinations", teams.len());
     export_txt(&teams);
