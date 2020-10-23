@@ -1,4 +1,6 @@
 use std::io::Write;
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 
 const AMOUNT_OF_PLAYERS: usize = 100;
 
@@ -54,97 +56,123 @@ fn export_txt(teams: &Vec<Vec<usize>>) {
 }
 
 fn main() {
-    let mut teams: Vec<Vec<usize>> = Vec::new();
+    let mut highest_teams = 0;
 
-    let mut matrix: [[usize; AMOUNT_OF_PLAYERS]; AMOUNT_OF_PLAYERS] = [[0; AMOUNT_OF_PLAYERS]; AMOUNT_OF_PLAYERS];
+    loop {
+        let mut teams: Vec<Vec<usize>> = Vec::new();
 
-    for i in 0..AMOUNT_OF_PLAYERS {
-        matrix[i][i] = 1;
-    }
+        let mut matrix: [[usize; AMOUNT_OF_PLAYERS]; AMOUNT_OF_PLAYERS] = [[0; AMOUNT_OF_PLAYERS]; AMOUNT_OF_PLAYERS];
 
-    let mut done_players: Vec::<usize> = Vec::new();
-
-    let mut c = true; // continue
-    while c {
-        c = false;
-
-        let mut sorted_ys: Vec<usize> = Vec::new();
-        let mut empty_places: Vec<usize> = Vec::new();
-
-        for player in 0..AMOUNT_OF_PLAYERS {
-            let empty = matrix[player].iter().filter(|&&x| x == 0 as usize).count();
-            let mut index = 0;
-            if empty_places.iter().position(|&r| r == empty) != None {
-                index = empty_places.iter().position(|&r| r == empty).unwrap();
-            }
-
-            sorted_ys.insert(index, player);
-            empty_places.insert(index, empty)
+        for i in 0..AMOUNT_OF_PLAYERS {
+            matrix[i][i] = 1;
         }
 
-        clear_console();
-        print_matrix(&matrix);
+        let mut done_players: Vec::<usize> = Vec::new();
 
+        let mut c = true; // continue
+        while c {
+            c = false;
 
-        for player in sorted_ys.iter() {
-            if done_players.contains(&player) {
-                continue
+            let mut sorted_ys: Vec<usize> = Vec::new();
+            let mut empty_places: Vec<usize> = Vec::new();
+
+            for player in 0..AMOUNT_OF_PLAYERS {
+                let empty = matrix[player].iter().filter(|&&x| x == 0 as usize).count();
+                let mut index = 0;
+                if empty_places.iter().position(|&r| r == empty) != None {
+                    index = empty_places.iter().position(|&r| r == empty).unwrap();
+                }
+
+                sorted_ys.insert(index, player);
+                empty_places.insert(index, empty)
             }
 
-            let mut changes = false;
-            let mut duos_in_new_team: Vec<[usize; 2]> = Vec::new();
-            if matrix[*player].iter().filter(|&&x| x == 0 as usize).count() >= 3 {
-                let mut all_zeros = Vec::<usize>::new();
-                let mut b: bool = false;
-                // for x in matrix[*player].iter() {
-                for x in sorted_ys.iter() {
-                    let cell = matrix[*player][*x];
-                    if cell == 0 {
-                        all_zeros.push(*x);
+            // clear_console();
+            // print_matrix(&matrix);
+
+            let mut rng = thread_rng();
+            let mut shuffled_ys = [0; AMOUNT_OF_PLAYERS];
+            for i in 0..AMOUNT_OF_PLAYERS {
+                shuffled_ys[i] = i;
+            }
+            shuffled_ys.shuffle(&mut rng);
+
+            for player in shuffled_ys.iter() {
+                if done_players.contains(&player) {
+                    continue
+                }
+
+                let mut changes = false;
+                let mut duos_in_new_team: Vec<[usize; 2]> = Vec::new();
+                if matrix[*player].iter().filter(|&&x| x == 0 as usize).count() >= 3 {
+                    let mut all_zeros = Vec::<usize>::new();
+                    let mut b: bool = false;
+                    
+                    let mut rng = thread_rng();
+                    let mut shuffled_ys2 = [0; AMOUNT_OF_PLAYERS];
+                    for i in 0..AMOUNT_OF_PLAYERS {
+                        shuffled_ys2[i] = i;
                     }
+                    shuffled_ys2.shuffle(&mut rng);
 
-                    let mut team: Vec<usize> = vec![*player];
-                    for zero in all_zeros.iter().rev() {
-                        let mut new_team: Vec<usize> = (*team).to_vec();
-                        new_team.push(*zero);
 
-                        if validate_team(&matrix, &new_team) {
-                            if new_team.len() == 4 {
-                                duos_in_new_team = all_duos(&new_team);
-                                teams.push((*new_team).to_vec());
-                                changes = true;
-                                b = true;
-                                break;
-                            }
-                            else {
-                                team = (*new_team).to_vec();
+                    for x in shuffled_ys2.iter() {
+                        let cell = matrix[*player][*x];
+                        if cell == 0 {
+                            all_zeros.push(*x);
+                        }
+
+                        let mut team: Vec<usize> = vec![*player];
+                        for zero in all_zeros.iter().rev() {
+                            let mut new_team: Vec<usize> = (*team).to_vec();
+                            new_team.push(*zero);
+
+                            if validate_team(&matrix, &new_team) {
+                                if new_team.len() == 4 {
+                                    duos_in_new_team = all_duos(&new_team);
+                                    teams.push((*new_team).to_vec());
+                                    changes = true;
+                                    b = true;
+                                    break;
+                                }
+                                else {
+                                    team = (*new_team).to_vec();
+                                }
                             }
                         }
-                    }
 
-                    if b {
-                        break;
+                        if b {
+                            break;
+                        }
                     }
                 }
-            }
 
-            for duo in duos_in_new_team.iter() {
-                matrix[duo[0]][duo[1]] = 1;
-                matrix[duo[1]][duo[0]] = 1;
-            }
+                for duo in duos_in_new_team.iter() {
+                    matrix[duo[0]][duo[1]] = 1;
+                    matrix[duo[1]][duo[0]] = 1;
+                }
 
-            if !changes {
-                done_players.push(*player);
-            } else {
-                c = true;
+                if !changes {
+                    done_players.push(*player);
+                } else {
+                    c = true;
+                }
             }
         }
-    }
 
-    for t in teams.iter() {
-        println!("{} {} {} {}", t[0], t[1], t[2], t[3]);
+        // for t in teams.iter() {
+        //     println!("{} {} {} {}", t[0], t[1], t[2], t[3]);
+        // }
+        
+        // If new highscore is reached output it to output.txt
+        let mut color = ""; // no higher score color is default
+        if teams.len() > highest_teams {
+            highest_teams = teams.len();
+            color = "\u{001b}[5;30;50;42m"; // if higher score color is green and flashing
+            export_txt(&teams);
+        } else if highest_teams - teams.len() < 4 {
+            color = "\u{001b}[5;30;50;43m"; // if difference is less than two than make it orange
+        }
+        println!("Found {} {} \u{001b}[0;0;0m combinations", color, teams.len());
     }
-
-    println!("Found \u{001b}[5;30;50;42m {:?} \u{001b}[0;0;0m combinations", teams.len());
-    export_txt(&teams);
 }
