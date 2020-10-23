@@ -1,6 +1,8 @@
 use std::io::Write;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
+use std::fs::File;
+use std::io::prelude::*;
 
 const AMOUNT_OF_PLAYERS: usize = 100;
 
@@ -55,9 +57,22 @@ fn export_txt(teams: &Vec<Vec<usize>>) {
     }
 }
 
-fn main() {
-    let mut highest_teams = 0;
+fn get_highest_teams() -> usize {
+    // the most ugly rust function you will ever see. This is to get the file length of output.txt
 
+    let mut file = match File::open("output.txt") {
+        Err(why) => panic!("couldn't open output.txt"),
+        Ok(file) => file,
+    };
+    let mut contents = String::new();
+    file.read_to_string(&mut contents);
+    let mut vec: Vec<&str> = contents.split("\n").collect();
+    let index = vec.iter().position(|x| *x == "").unwrap();
+    vec.remove(index);
+    vec.len()
+}
+
+fn main() {
     loop {
         let mut teams: Vec<Vec<usize>> = Vec::new();
 
@@ -166,8 +181,8 @@ fn main() {
         
         // If new highscore is reached output it to output.txt
         let mut color = ""; // no higher score color is default
+        let highest_teams = get_highest_teams();
         if teams.len() > highest_teams {
-            highest_teams = teams.len();
             color = "\u{001b}[5;30;50;42m"; // if higher score color is green and flashing
             export_txt(&teams);
         } else if highest_teams - teams.len() < 4 {
