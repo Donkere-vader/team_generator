@@ -3,6 +3,8 @@ use rand::seq::SliceRandom;
 use rand::thread_rng;
 use std::fs::File;
 use std::io::prelude::*;
+use rand::Rng;
+use std::cmp;
 
 const AMOUNT_OF_PLAYERS: usize = 100;
 
@@ -36,7 +38,14 @@ fn validate_team(matrix: &[[usize; AMOUNT_OF_PLAYERS]; AMOUNT_OF_PLAYERS], team:
 }
 
 fn print_matrix(matrix: &[[usize; AMOUNT_OF_PLAYERS]; AMOUNT_OF_PLAYERS]) {
+    print!("   ");
+    for x in 0..AMOUNT_OF_PLAYERS {
+        print!("{}", format!("{: >3}", x + 1));
+    }
+    println!();
+
     for y in 0..AMOUNT_OF_PLAYERS {
+        print!("{}",format!("{: >3}", y + 1));
         for x in 0..AMOUNT_OF_PLAYERS {
             let cell = matrix[y][x];
             let mut color = "";
@@ -72,6 +81,41 @@ fn get_highest_teams() -> usize {
     vec.len()
 }
 
+fn generate_list(from: usize, to: usize) -> [usize; AMOUNT_OF_PLAYERS] {
+    let mut new_list = [0; AMOUNT_OF_PLAYERS];
+    for num in from..to {
+        new_list[num] = num;
+    }
+
+    new_list
+}
+
+fn num_in_range(num: i128, min: i128, max: i128) -> i128 {
+    if num < min {
+        return min;
+    } else if num > max - 1 {
+        return max - 1;
+    }
+
+    num
+}
+
+fn shuffle_list(list: &mut [usize; AMOUNT_OF_PLAYERS], range: &usize, shuffles: &usize) {
+    // don't hate, I'm not very experienced with rust
+
+    let mut rng = rand::thread_rng();
+    for i in 0..*shuffles {
+        let num = rng.gen_range(0, AMOUNT_OF_PLAYERS);
+        let mut shuffle_with = rng.gen_range(*range as i128 * -1, *range as i128);
+        shuffle_with += num as i128;
+        let shuffle_with_idx = num_in_range(shuffle_with, 0, AMOUNT_OF_PLAYERS as i128) as usize;
+        
+        let temp = list[num];
+        list[num] = list[shuffle_with_idx];
+        list[shuffle_with_idx] = temp;
+    }
+}
+
 fn main() {
     loop {
         let mut teams: Vec<Vec<usize>> = Vec::new();
@@ -85,25 +129,25 @@ fn main() {
         let mut done_players: Vec::<usize> = Vec::new();
         let mut not_c = 0;
         let mut c = true; // continue
-        while c && not_c < 100 {
+        while c || not_c < 10 {
             if !c {
                 not_c += 1;
             }
             c = false;
 
-            let mut sorted_ys: Vec<usize> = Vec::new();
-            let mut empty_places: Vec<usize> = Vec::new();
+            // let mut sorted_ys: Vec<usize> = Vec::new();
+            // let mut empty_places: Vec<usize> = Vec::new();
 
-            for player in 0..AMOUNT_OF_PLAYERS {
-                let empty = matrix[player].iter().filter(|&&x| x == 0 as usize).count();
-                let mut index = 0;
-                if empty_places.iter().position(|&r| r == empty) != None {
-                    index = empty_places.iter().position(|&r| r == empty).unwrap();
-                }
+            // for player in 0..AMOUNT_OF_PLAYERS {
+            //     let empty = matrix[player].iter().filter(|&&x| x == 0 as usize).count();
+            //     let mut index = 0;
+            //     if empty_places.iter().position(|&r| r == empty) != None {
+            //         index = empty_places.iter().position(|&r| r == empty).unwrap();
+            //     }
 
-                sorted_ys.insert(index, player);
-                empty_places.insert(index, empty)
-            }
+            //     sorted_ys.insert(index, player);
+            //     empty_places.insert(index, empty)
+            // }
 
             // clear_console();
             // print_matrix(&matrix);
@@ -182,8 +226,8 @@ fn main() {
         if teams.len() > highest_teams {
             color = "\u{001b}[5;30;50;42m"; // if higher score color is green and flashing
             export_txt(&teams);
-        } else if highest_teams - teams.len() < 4 {
-            color = "\u{001b}[5;30;50;43m"; // if difference is less than two than make it orange
+        } else if highest_teams - teams.len() == 0 {
+            color = "\u{001b}[30;50;43m"; // if difference is 0 then the color is orange
         }
         // clear_console();
         // print_matrix(&matrix);
