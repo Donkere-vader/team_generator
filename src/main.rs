@@ -1,17 +1,39 @@
 use std::io::Write;
-use rand::seq::SliceRandom;
-use rand::thread_rng;
 use std::fs::File;
 use std::io::prelude::*;
 use rand::Rng;
-use std::cmp;
 
 const AMOUNT_OF_PLAYERS: usize = 100;
+
+#[allow(dead_code)]
 
 fn clear_console() {
     print!("{}[2J", 27 as char);
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
 }
+
+#[allow(dead_code)]
+fn print_matrix(matrix: &[[usize; AMOUNT_OF_PLAYERS]; AMOUNT_OF_PLAYERS]) {
+    print!("   ");
+    for x in 0..AMOUNT_OF_PLAYERS {
+        print!("{}", format!("{: >3}", x + 1));
+    }
+    println!();
+
+    for y in 0..AMOUNT_OF_PLAYERS {
+        print!("{}",format!("{: >3}", y + 1));
+        for x in 0..AMOUNT_OF_PLAYERS {
+            let cell = matrix[y][x];
+            let mut color = "";
+            if cell > 0 {
+                color = "\u{001b}[30;50;42m";
+            }
+            print!("{}  {}\u{001b}[0;0;0m", color, cell);
+        }
+        println!();
+    }
+}
+
 
 fn all_duos(team: &Vec<usize>) -> Vec<[usize; 2]> {
     let mut all: Vec<[usize; 2]> = Vec::new();
@@ -35,27 +57,6 @@ fn validate_team(matrix: &[[usize; AMOUNT_OF_PLAYERS]; AMOUNT_OF_PLAYERS], team:
     }
 
     true
-}
-
-fn print_matrix(matrix: &[[usize; AMOUNT_OF_PLAYERS]; AMOUNT_OF_PLAYERS]) {
-    print!("   ");
-    for x in 0..AMOUNT_OF_PLAYERS {
-        print!("{}", format!("{: >3}", x + 1));
-    }
-    println!();
-
-    for y in 0..AMOUNT_OF_PLAYERS {
-        print!("{}",format!("{: >3}", y + 1));
-        for x in 0..AMOUNT_OF_PLAYERS {
-            let cell = matrix[y][x];
-            let mut color = "";
-            if cell > 0 {
-                color = "\u{001b}[30;50;42m";
-            }
-            print!("{}  {}\u{001b}[0;0;0m", color, cell);
-        }
-        println!();
-    }
 }
 
 fn export_txt(teams: &Vec<Vec<usize>>) {
@@ -104,7 +105,7 @@ fn shuffle_list(list: &mut [usize; AMOUNT_OF_PLAYERS], range: &usize, shuffles: 
     // don't hate, I'm not very experienced with rust
 
     let mut rng = rand::thread_rng();
-    for i in 0..*shuffles {
+    for _ in 0..*shuffles {
         let num = rng.gen_range(0, AMOUNT_OF_PLAYERS);
         let mut shuffle_with = rng.gen_range(*range as i128 * -1, *range as i128);
         shuffle_with += num as i128;
@@ -117,11 +118,21 @@ fn shuffle_list(list: &mut [usize; AMOUNT_OF_PLAYERS], range: &usize, shuffles: 
 }
 
 fn main() {
+    let mut rng = rand::thread_rng();
+    
     loop {
+        // setup
         let mut teams: Vec<Vec<usize>> = Vec::new();
-
         let mut matrix: [[usize; AMOUNT_OF_PLAYERS]; AMOUNT_OF_PLAYERS] = [[0; AMOUNT_OF_PLAYERS]; AMOUNT_OF_PLAYERS];
+        let mut shuffled_ys = generate_list(0, AMOUNT_OF_PLAYERS);
+        let mut shuffled_ys2 = generate_list(0, AMOUNT_OF_PLAYERS);
+        let mut shuffle_range = rng.gen_range(5, 30);
+        let mut shuffle_amount = rng.gen_range(5, 40);
+        // let mut shuffle_range: usize = 10;
+        // let mut shuffle_amount: usize = 40;
+        let mut loop_iteration = 0;
 
+        // fill in the diagonal ((0, 0), (1, 1), (2, 2) ..etc)
         for i in 0..AMOUNT_OF_PLAYERS {
             matrix[i][i] = 1;
         }
@@ -129,52 +140,30 @@ fn main() {
         let mut done_players: Vec::<usize> = Vec::new();
         let mut not_c = 0;
         let mut c = true; // continue
-        while c || not_c < 10 {
+        while c || not_c < 20 {
             if !c {
                 not_c += 1;
             }
             c = false;
 
-            // let mut sorted_ys: Vec<usize> = Vec::new();
-            // let mut empty_places: Vec<usize> = Vec::new();
-
-            // for player in 0..AMOUNT_OF_PLAYERS {
-            //     let empty = matrix[player].iter().filter(|&&x| x == 0 as usize).count();
-            //     let mut index = 0;
-            //     if empty_places.iter().position(|&r| r == empty) != None {
-            //         index = empty_places.iter().position(|&r| r == empty).unwrap();
-            //     }
-
-            //     sorted_ys.insert(index, player);
-            //     empty_places.insert(index, empty)
-            // }
-
-            // clear_console();
-            // print_matrix(&matrix);
-
-            let mut rng = thread_rng();
-            let mut shuffled_ys = [0; AMOUNT_OF_PLAYERS];
-            for i in 0..AMOUNT_OF_PLAYERS {
-                shuffled_ys[i] = i;
+            if loop_iteration % 20  == 0{
+            //     shuffle_range = rng.gen_range(1, 30);
+            //     shuffle_amount = rng.gen_range(0, 30);
+                shuffle_range = num_in_range((shuffle_range - 1) as i128, 5, AMOUNT_OF_PLAYERS as i128) as usize;
+                shuffle_amount = num_in_range((shuffle_amount - 1) as i128, 5, AMOUNT_OF_PLAYERS as i128) as usize;
+                loop_iteration = 0;
             }
-            shuffled_ys.shuffle(&mut rng);
+            loop_iteration += 1;
+
+            shuffle_list(&mut shuffled_ys, &shuffle_range, &shuffle_amount);
 
             for player in shuffled_ys.iter() {
-                // if done_players.contains(&player) {
-                //     continue
-                // }
-
                 let mut changes = false;
                 let mut duos_in_new_team: Vec<[usize; 2]> = Vec::new();
                 if matrix[*player].iter().filter(|&&x| x == 0 as usize).count() >= 3 {
                     let mut all_zeros = Vec::<usize>::new();
                     
-                    let mut rng = thread_rng();
-                    let mut shuffled_ys2 = [0; AMOUNT_OF_PLAYERS];
-                    for i in 0..AMOUNT_OF_PLAYERS {
-                        shuffled_ys2[i] = i;
-                    }
-                    shuffled_ys2.shuffle(&mut rng);
+                    shuffle_list(&mut shuffled_ys2, &shuffle_range, &shuffle_amount);
 
 
                     for x in shuffled_ys2.iter() {
@@ -215,10 +204,6 @@ fn main() {
                 }
             }
         }
-
-        // for t in teams.iter() {
-        //     println!("{} {} {} {}", t[0], t[1], t[2], t[3]);
-        // }
         
         // If new highscore is reached output it to output.txt
         let mut color = ""; // no higher score color is default
@@ -226,11 +211,12 @@ fn main() {
         if teams.len() > highest_teams {
             color = "\u{001b}[5;30;50;42m"; // if higher score color is green and flashing
             export_txt(&teams);
-        } else if highest_teams - teams.len() == 0 {
+        } else if highest_teams - teams.len() < 5 {
             color = "\u{001b}[30;50;43m"; // if difference is 0 then the color is orange
         }
-        // clear_console();
-        // print_matrix(&matrix);
         println!("Found {} {} \u{001b}[0;0;0m combinations", color, teams.len());
+        // if teams.len() > 730 {
+        //     println!("{} {}", shuffle_range, shuffle_amount);
+        // }
     }
 }
