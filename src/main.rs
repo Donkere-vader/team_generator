@@ -178,7 +178,7 @@ fn start_loop() -> Vec<Vec<usize>> {
                     }
 
                     let mut team: Vec<usize> = vec![*player];
-                    for zero in all_zeros.iter() {
+                    for zero in all_zeros.iter().rev() {
                         let mut new_team: Vec<usize> = (*team).to_vec();
                         new_team.push(*zero);
 
@@ -221,6 +221,7 @@ fn main() {
     loop {
         let mut threads: Vec<std::thread::JoinHandle<()>> = Vec::new();
 
+        println!("Spawning threads...");
         for _ in 0..PROCESSES {
             threads.push(
                 thread::spawn(move || {
@@ -240,6 +241,7 @@ fn main() {
             );
         }
 
+        println!("Waiting for threads...");
         for thread in threads {
             thread.join().expect("Error joining thread");
         }
