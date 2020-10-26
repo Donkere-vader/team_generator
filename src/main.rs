@@ -2,8 +2,10 @@ use std::io::Write;
 use std::fs::File;
 use std::io::prelude::*;
 use rand::Rng;
+use std::thread;
 
 const AMOUNT_OF_PLAYERS: usize = 100;
+const PROCESSES: usize = 16;
 
 #[allow(dead_code)]
 
@@ -117,10 +119,12 @@ fn shuffle_list(list: &mut [usize; AMOUNT_OF_PLAYERS], range: &usize, shuffles: 
     }
 }
 
-fn main() {
+fn start_loop() -> Vec<Vec<usize>> {
     let mut rng = rand::thread_rng();
     
-    loop {
+    let mut most_teams = Vec::new();
+
+    for _ in 0..1000 {
         // setup
         let mut teams: Vec<Vec<usize>> = Vec::new();
         let mut matrix: [[usize; AMOUNT_OF_PLAYERS]; AMOUNT_OF_PLAYERS] = [[0; AMOUNT_OF_PLAYERS]; AMOUNT_OF_PLAYERS];
@@ -128,8 +132,8 @@ fn main() {
         let mut shuffled_ys2 = generate_list(0, AMOUNT_OF_PLAYERS);
         let mut shuffle_range = rng.gen_range(5, 30);
         let mut shuffle_amount = rng.gen_range(5, 40);
-        // let mut shuffle_range: usize = 10;
-        // let mut shuffle_amount: usize = 40;
+        // let mut shuffle_range: usize = 15;
+        // let mut shuffle_amount: usize = 25;
         let mut loop_iteration = 0;
 
         // fill in the diagonal ((0, 0), (1, 1), (2, 2) ..etc)
@@ -140,7 +144,7 @@ fn main() {
         let mut done_players: Vec::<usize> = Vec::new();
         let mut not_c = 0;
         let mut c = true; // continue
-        while c || not_c < 20 {
+        while c || not_c < 100 {
             if !c {
                 not_c += 1;
             }
@@ -205,18 +209,39 @@ fn main() {
             }
         }
         
-        // If new highscore is reached output it to output.txt
-        let mut color = ""; // no higher score color is default
-        let highest_teams = get_highest_teams();
-        if teams.len() > highest_teams {
-            color = "\u{001b}[5;30;50;42m"; // if higher score color is green and flashing
-            export_txt(&teams);
-        } else if highest_teams - teams.len() < 5 {
-            color = "\u{001b}[30;50;43m"; // if difference is 0 then the color is orange
+        if teams.len() > most_teams.len() {
+            most_teams = teams;
         }
-        println!("Found {} {} \u{001b}[0;0;0m combinations", color, teams.len());
-        // if teams.len() > 730 {
-        //     println!("{} {}", shuffle_range, shuffle_amount);
-        // }
+    }
+
+    most_teams
+}
+
+fn main() {
+    loop {
+        let mut threads: Vec<std::thread::JoinHandle<()>> = Vec::new();
+
+        for _ in 0..PROCESSES {
+            threads.push(
+                thread::spawn(move || {
+                    let teams = start_loop();
+    
+                    // If new highscore is reached output it to output.txt
+                    let mut color = ""; // no higher score color is default
+                    let highest_teams = get_highest_teams();
+                    if teams.len() > highest_teams {
+                        color = "\u{001b}[5;30;50;42m"; // if higher score color is green and flashing
+                        export_txt(&teams);
+                    } else if highest_teams - teams.len() < 10 {
+                        color = "\u{001b}[30;50;43m"; // if difference is 0 then the color is orange
+                    }
+                    println!("Found {} {} \u{001b}[0;0;0m combinations", color, teams.len());
+                })
+            );
+        }
+
+        for thread in threads {
+            thread.join().expect("Error joining thread");
+        }
     }
 }
